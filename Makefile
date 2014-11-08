@@ -20,7 +20,7 @@ clean:
 
 $(DEMO): demo.c
 	@$(CC) $(CFLAGS) $(LDFLAGS) -L . demo.c -o $@ -lcarallel
-	@echo "To execute demo: LD_LIBRARY_PATH=$$""(LD_LIBRARY_PATH):. ./"$(DEMO)
+	@echo "To execute demo: LD_LIBRARY_PATH=$$""LD_LIBRARY_PATH:. ./"$(DEMO)
 
 out:
 	@mkdir -p $@
