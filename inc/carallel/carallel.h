@@ -44,9 +44,9 @@
  * The 'main' argument is necessary to stop parallel threads
  * from spawning additional threads when they check for code
  * block to execute.
- * The parallelism uses Duff's Device, inserting cases into the
- * code. The code defined by user when calling this macro is
- * therefore executed in a switch statement. The macro uses a
+ * The parallelism is inspired by Duff's Device, inserting cases
+ * into the code. The code defined by user when calling this macro
+ * is therefore executed in a switch statement. The macro uses a
  * GCC-only predefined preprocessor macro: __COUNTER__. Without
  * it, user would have to pass a unique value to CARALLEL macros.
  * The __COUNTER__ macro is also supported by clang and Visual
