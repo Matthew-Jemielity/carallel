@@ -18,7 +18,7 @@ $(LIBRARY): out $(OBJECTS)
 clean:
 	@rm -rf $(DEMO) $(LIBRARY) out
 
-$(DEMO): demo.c
+$(DEMO): demo.c $(LIBRARY)
 	@$(CC) $(CFLAGS) $(LDFLAGS) -L . demo.c -o $@ -lcarallel
 	@echo "To execute demo: LD_LIBRARY_PATH=$$""LD_LIBRARY_PATH:. ./"$(DEMO)
 
