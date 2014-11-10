@@ -104,6 +104,7 @@
  * \param UID Unique identifier for parallelized code block.
  * \param ... Code block to be parallelized.
  * \remarks Code block should be legal inside a method's scope.
+ * \warning Code block must be self-contained, i.e. not reference outside vars
  *
  * This macro uses a unique identifier for a block of code, which it
  * will attempt to run in separate thread. Setting up parallelization
