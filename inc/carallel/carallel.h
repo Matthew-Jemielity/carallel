@@ -125,17 +125,11 @@
             if(( false == main ) && ( UID == uid )) \
             { __VA_ARGS__ return; } \
             if( false == main ) { break; } \
-            static pthread_t carallel_id_##UID##____; \
-            static carallel_##NAME##_arg_t \
-                carallel_p_##UID##____; \
-            carallel_p_##UID##____.uid = UID; \
-            carallel_p_##UID##____.q = q; \
-            if( 0 == pthread_create( \
-                &( carallel_id_##UID##____ ), \
-                NULL, \
-                carallel_thread_##NAME, \
-                &( carallel_p_##UID##____ ) \
-            )) { carallel_queue_put( q, &( carallel_id_##UID##____ )); } \
+            static pthread_t id; \
+            static carallel_##NAME##_arg_t p; \
+            p.uid = UID; p.q = q; \
+            if( 0 == pthread_create( &id, NULL, carallel_thread_##NAME, &p )) \
+            { carallel_queue_put( q, &id ); } \
         } while( false )
 
 /**
