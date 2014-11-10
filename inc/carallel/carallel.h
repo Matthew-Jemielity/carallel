@@ -98,7 +98,7 @@
     }
 
 /**
- * \def CARALLEL_UID__
+ * \def CARALLEL_UID____
  * \brief Causes code block defined within to execute in new thread.
  * \param NAME Name of the method to which the code block belongs.
  * \param UID Unique identifier for parallelized code block.
@@ -119,18 +119,23 @@
  * macro wizardry some obstacles may be removed and functionality
  * extended.
  */
-# define CARALLEL_UID__( NAME, UID, ... ) \
+# define CARALLEL_UID____( NAME, UID, ... ) \
     case UID: \
         do { \
             if(( false == main ) && ( UID == uid )) \
             { __VA_ARGS__ return; } \
             if( false == main ) { break; } \
-            static pthread_t id_##UID; \
-            static carallel_##NAME##_arg_t p_##UID; \
-            p_##UID.uid = UID; p_##UID.q = q; \
+            static pthread_t carallel_id_##UID##____; \
+            static carallel_##NAME##_arg_t \
+                carallel_p_##UID##____; \
+            carallel_p_##UID##____.uid = UID; \
+            carallel_p_##UID##____.q = q; \
             if( 0 == pthread_create( \
-                &( id_##UID ), NULL, carallel_thread_##NAME, &( p_##UID ) \
-            )) { carallel_queue_put( q, &( id_##UID )); } \
+                &( carallel_id_##UID##____ ), \
+                NULL, \
+                carallel_thread_##NAME, \
+                &( carallel_p_##UID##____ ) \
+            )) { carallel_queue_put( q, &( carallel_id_##UID##____ )); } \
         } while( false )
 
 /**
@@ -147,7 +152,7 @@
  */
 
 # define CARALLEL( NAME, ... ) \
-    CARALLEL_UID__( NAME, __COUNTER__, __VA_ARGS__ )
+    CARALLEL_UID____( NAME, __COUNTER__, __VA_ARGS__ )
 
 #endif /* CARALLEL_H__ */
 
