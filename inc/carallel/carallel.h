@@ -77,7 +77,7 @@
         carallel_##NAME##_arg_t * const a = p; \
         assert( NULL != a ); \
         carallel_ready_##NAME( a->uid, a->q, false ); \
-        free( a ); return NULL; \
+        return NULL; \
     } \
     void carallel_ready_##NAME( \
         int64_t const uid, \
@@ -93,7 +93,6 @@
             { \
                 pthread_t * id = carallel_queue_get( q ); \
                 pthread_join( *id, NULL ); \
-                free( id ); \
             } \
         } \
     }
@@ -108,17 +107,17 @@
  *
  * This macro uses a unique identifier for a block of code, which it
  * will attempt to run in separate thread. Setting up parallelization
- * allocates memory for internal data structures. If that allocation
- * fails, the macro bails out without creating a separate thread. The
- * allocation is necessary because trying to use stack variables would
- * inevitably run into scoping issues. Removing need for allocation
- * would mean another set of limitations on usage. The macro basically
- * creates an case in a switch statement. This tests whether exectution
- * is in the main thread and the UID passed is the same as the one
- * belonging to the block. If so, the code inside that if block is
- * executed, after which the method returns. This may limit usage in
- * not-so-trivial scenarios. With sufficient macro wizardry some
- * obstacles may be removed and functionality extended.
+ * uses uniquely named static variables to hold thread id and struct
+ * of arguments passed to wrapper function. This is necessary because
+ * trying to use normal stack variables would inevitably run into
+ * scoping issues, which in turn would mean another set of limitations
+ * on usage. The macro basically creates an case in a switch statement.
+ * This tests whether exectution is in the main thread and the UID
+ * passed is the same as the one belonging to the block. If so, the
+ * code inside that if block is executed, after which the method returns.
+ * This may limit usage in not-so-trivial scenarios. With sufficient
+ * macro wizardry some obstacles may be removed and functionality
+ * extended.
  */
 # define CARALLEL_UID__( NAME, UID, ... ) \
     case UID: \
@@ -126,15 +125,12 @@
             if(( false == main ) && ( UID == uid )) \
             { __VA_ARGS__ return; } \
             if( false == main ) { break; } \
-            pthread_t * id = malloc( sizeof( pthread_t )); \
-            carallel_##NAME##_arg_t * p = \
-                malloc( sizeof( carallel_##NAME##_arg_t )); \
-            p->uid = UID; p->q = q; \
-            if(( NULL == id ) || ( NULL == p )) \
-            { free( id ); free( p ); break; } \
+            static pthread_t id_##UID; \
+            static carallel_##NAME##_arg_t p_##UID; \
+            p_##UID.uid = UID; p_##UID.q = q; \
             if( 0 == pthread_create( \
-                id, NULL, carallel_thread_##NAME, p \
-            )) { carallel_queue_put( q, id ); } \
+                &( id_##UID ), NULL, carallel_thread_##NAME, &( p_##UID ) \
+            )) { carallel_queue_put( q, &( id_##UID )); } \
         } while( false )
 
 /**
