@@ -62,7 +62,7 @@
         int64_t uid; \
         carallel_queue_t * q; \
     } carallel_##NAME##_arg_t; \
-    void carallel_ready_##NAME( \
+    static void carallel_ready_##NAME( \
         int64_t const uid, \
         carallel_queue_t * const q, \
         bool const main \
@@ -72,14 +72,14 @@
         carallel_queue_t q = { NULL }; \
         carallel_ready_##NAME( -1, &q, true ); \
     } \
-    void * carallel_thread_##NAME( void * const p ) \
+    static void * carallel_thread_##NAME( void * const p ) \
     { \
         carallel_##NAME##_arg_t * const a = p; \
         assert( NULL != a ); \
         carallel_ready_##NAME( a->uid, a->q, false ); \
         return NULL; \
     } \
-    void carallel_ready_##NAME( \
+    static void carallel_ready_##NAME( \
         int64_t const uid, \
         carallel_queue_t * const q, \
         bool const main \
