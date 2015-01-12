@@ -27,6 +27,7 @@
  * \def CARALLEL_ENABLED
  * \brief Creates a function that can use parallel code blocks.
  * \param NAME Name of the function to be created.
+ * \param ... Source code of the function NAME.
  * \remarks Creates helper functions using provided name as UID.
  *
  * Several wrappers are created, using provided name for unique
@@ -113,7 +114,7 @@
  * trying to use normal stack variables would inevitably run into
  * scoping issues, which in turn would mean another set of limitations
  * on usage. The macro basically creates an case in a switch statement.
- * This tests whether exectution is in the main thread and the UID
+ * This tests whether execution is in the main thread and the UID
  * passed is the same as the one belonging to the block. If so, the
  * code inside that if block is executed, after which the method returns.
  * This may limit usage in not-so-trivial scenarios. With sufficient
