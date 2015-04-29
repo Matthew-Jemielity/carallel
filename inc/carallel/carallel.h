@@ -24,7 +24,22 @@
 # include <stdlib.h>
 
 /**
- * \def CARALLEL_ENABLED
+ * \def CARALLEL_LABEL____
+ * \brief Internal macro for pasting two tokens together.
+ * \param X First token.
+ * \param Y Second token.
+ */
+#define CARALLEL_LABEL____( X, Y ) X ## Y
+/**
+ * \def CARALLEL_LABEL
+ * \brief Creates label usable with goto by pasting two tokens together.
+ * \param X First token.
+ * \param Y Second token.
+ */
+#define CARALLEL_LABEL( X, Y ) CARALLEL_LABEL____( X, Y )
+
+/**
+ * \def CARALLELIZE
  * \brief Creates a function that can use parallel code blocks.
  * \param NAME Name of the function to be created.
  * \param ... Source code of the function NAME.
@@ -58,12 +73,12 @@
  * and returning nothing. Though with sufficient macro magic
  * adding more features should be possible.
  */
-# define CARALLEL_ENABLED( NAME, ... ) \
+# define CARALLELIZE( NAME, ... ) \
     typedef struct { \
         int64_t uid; \
         carallel_queue_t * q; \
-    } carallel_##NAME##_arg_t; \
-    static void carallel_ready_##NAME( \
+    } carallel_ ## NAME ## _arg_t; \
+    static void carallel_ready_ ## NAME( \
         int64_t const uid, \
         carallel_queue_t * const q, \
         bool const main \
@@ -71,23 +86,27 @@
     void NAME( void ) \
     { \
         carallel_queue_t q = { NULL }; \
-        carallel_ready_##NAME( -1, &q, true ); \
+        carallel_ready_ ## NAME( -1, &q, true ); \
     } \
-    static void * carallel_thread_##NAME( void * const p ) \
+    static void * carallel_thread_ ## NAME( void * const p ) \
     { \
-        carallel_##NAME##_arg_t * const a = p; \
+        carallel_ ## NAME ## _arg_t * const a = p; \
         assert( NULL != a ); \
-        carallel_ready_##NAME( a->uid, a->q, false ); \
+        carallel_ready_ ## NAME( a->uid, a->q, false ); \
         return NULL; \
     } \
-    static void carallel_ready_##NAME( \
+    static void carallel_ready_ ## NAME ## _main_switch( \
+        int64_t const uid, \
+        carallel_queue_t * const q, \
+        bool const main \
+    ); \
+    static void carallel_ready_ ## NAME( \
         int64_t const uid, \
         carallel_queue_t * const q, \
         bool const main \
     ) \
     { \
-        switch( uid ) \
-        { default: __VA_ARGS__ } \
+        carallel_ready_ ## NAME ## _main_switch( uid, q, main ); \
         if( true == main ) \
         { \
             while( NULL != q->head ) \
@@ -96,6 +115,15 @@
                 pthread_join( *id, NULL ); \
             } \
         } \
+    } \
+    static void carallel_ready_ ## NAME ## _main_switch( \
+        int64_t const uid, \
+        carallel_queue_t * const q, \
+        bool const main \
+    ) \
+    { \
+        switch( uid ) \
+        { default: __VA_ARGS__ } \
     }
 
 /**
@@ -103,10 +131,10 @@
  * \brief Causes code block defined within to execute in new thread.
  * \param NAME Name of the method to which the code block belongs.
  * \param UID Unique identifier for parallelized code block.
- * \param ... Code block to be parallelized.
  * \remarks Code block should be legal inside a method's scope.
  * \warning Code block must be self-contained, i.e. not reference outside vars
  *
+ * This macro MUST be followed by a block of code or a single statement.
  * This macro uses a unique identifier for a block of code, which it
  * will attempt to run in separate thread. Setting up parallelization
  * uses uniquely named static variables to hold thread id and struct
@@ -121,34 +149,44 @@
  * macro wizardry some obstacles may be removed and functionality
  * extended.
  */
-# define CARALLEL_UID____( NAME, UID, ... ) \
+# define CARALLEL_UID____( NAME, UID ) \
     case UID: \
-        do { \
-            if(( false == main ) && ( UID == uid )) \
-            { __VA_ARGS__ return; } \
-            if( false == main ) { break; } \
+        if( true == main ) \
+        { \
             static pthread_t id; \
-            static carallel_##NAME##_arg_t p; \
+            static carallel_ ## NAME ## _arg_t p; \
             p.uid = UID; p.q = q; \
-            if( 0 == pthread_create( &id, NULL, carallel_thread_##NAME, &p )) \
+            if( ! pthread_create( &id, NULL, carallel_thread_ ## NAME, &p )) \
             { carallel_queue_put( q, &id ); } \
-        } while( false )
+        } \
+        else if(( false == main ) && ( UID != uid )) { break; } \
+        else \
+            if( true ) { \
+                goto CARALLEL_LABEL( carallel_ ## NAME ## _user_, UID ); \
+            } \
+            else \
+                while( true ) \
+                    if( true ) { return; } \
+                    else \
+                        CARALLEL_LABEL( carallel_ ## NAME ## _user_, UID ):
+                        /* user code block here */
 
 /**
  * \def CARALLEL
  * \brief Gives unique ID to a code block (per compilation unit).
- * \param NAME Name of the method to which the code block belongs.
- * \param ... Code block to be parallelized.
- * \remarks Code block should be legal inside a method's scope.
+ * \param NAME Name of carallel-enabled method to which the block belongs.
+ * \remark Code block should be legal inside a method's scope.
+ * \warning Code block must be self-contained, i.e. not reference outside vars.
  *
  * This macro uses GCC's __COUNTER__ macro as unique identifier for
  * a block of code, which it will attempt to run in separate thread.
  * Preprocessor macro __COUNTER__ allows to have unique identifier
- * inside a single compilation unit. 
+ * inside a single compilation unit.
+ * This macro MUST be followed by a valid code block or a signle statement.
  */
-
-# define CARALLEL( NAME, ... ) \
-    CARALLEL_UID____( NAME, __COUNTER__, __VA_ARGS__ )
+# define CARALLEL( NAME ) \
+    CARALLEL_UID____( NAME, __COUNTER__ )
+/* user code block here */
 
 #endif /* CARALLEL_H__ */
 
