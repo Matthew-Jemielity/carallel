@@ -15,7 +15,6 @@
  * Last, but not least, have fun with this project.
  */
 
-# include <assert.h>
 # include <carallel/queue.h>
 # include <pthread.h>
 # include <stdbool.h>
@@ -24,19 +23,19 @@
 # include <stdlib.h>
 
 /**
- * \def CARALLEL_LABEL____
+ * \def CARALLEL_JOIN____
  * \brief Internal macro for pasting two tokens together.
  * \param X First token.
  * \param Y Second token.
  */
-#define CARALLEL_LABEL____( X, Y ) X ## Y
+#define CARALLEL_JOIN____( X, Y ) X ## Y
 /**
- * \def CARALLEL_LABEL
+ * \def CARALLEL_JOIN
  * \brief Creates label usable with goto by pasting two tokens together.
  * \param X First token.
  * \param Y Second token.
  */
-#define CARALLEL_LABEL( X, Y ) CARALLEL_LABEL____( X, Y )
+#define CARALLEL_JOIN( X, Y ) CARALLEL_JOIN____( X, Y )
 
 /**
  * \def CARALLELIZE
@@ -53,13 +52,8 @@
  *    pointer to queue containing IDs of created threads.
  * The actual function, which the user will define when calling
  * this macro has several additional arguments:
- * a) UID - unique identifier for parallelized code block
+ * a) arg - unique identifier for parallelized code block
  * b) q - pointer to pthread IDs queue
- * c) main - boolean variable telling whether execution is
- *           in the main thread or parallel threads
- * The 'main' argument is necessary to stop parallel threads
- * from spawning additional threads when they check for code
- * block to execute.
  * The parallelism is inspired by Duff's Device, inserting cases
  * into the code. The code defined by user when calling this macro
  * is therefore executed in a switch statement. The macro uses a
@@ -74,55 +68,33 @@
  * adding more features should be possible.
  */
 # define CARALLELIZE( NAME, ... ) \
-    typedef struct { \
-        int64_t uid; \
-        carallel_queue_t * q; \
-    } carallel_ ## NAME ## _arg_t; \
-    static void carallel_ready_ ## NAME( \
-        int64_t const uid, \
-        carallel_queue_t * const q, \
-        bool const main \
+    typedef struct { int64_t uid; } carallel_ ## NAME ## _arg_t; \
+    static void carallelized_ ## NAME( \
+        carallel_ ## NAME ## _arg_t const arg, \
+        carallel_queue_t * const q \
     ); \
     void NAME( void ) \
     { \
         carallel_queue_t q = { NULL }; \
-        carallel_ready_ ## NAME( -1, &q, true ); \
+        carallelized_ ## NAME(( carallel_ ## NAME ## _arg_t ) { -1 }, &q ); \
+        while( NULL != q.head ) \
+        { \
+            pthread_t * id = carallel_queue_get( &q ); \
+            pthread_join( *id, NULL ); \
+        } \
     } \
     static void * carallel_thread_ ## NAME( void * const p ) \
     { \
         carallel_ ## NAME ## _arg_t * const a = p; \
-        assert( NULL != a ); \
-        carallel_ready_ ## NAME( a->uid, a->q, false ); \
+        carallelized_ ## NAME( *a, NULL ); \
         return NULL; \
     } \
-    static void carallel_ready_ ## NAME ## _main_switch( \
-        int64_t const uid, \
-        carallel_queue_t * const q, \
-        bool const main \
-    ); \
-    static void carallel_ready_ ## NAME( \
-        int64_t const uid, \
-        carallel_queue_t * const q, \
-        bool const main \
+    static void carallelized_ ## NAME( \
+        carallel_ ## NAME ## _arg_t const arg, \
+        carallel_queue_t * const q \
     ) \
     { \
-        carallel_ready_ ## NAME ## _main_switch( uid, q, main ); \
-        if( true == main ) \
-        { \
-            while( NULL != q->head ) \
-            { \
-                pthread_t * id = carallel_queue_get( q ); \
-                pthread_join( *id, NULL ); \
-            } \
-        } \
-    } \
-    static void carallel_ready_ ## NAME ## _main_switch( \
-        int64_t const uid, \
-        carallel_queue_t * const q, \
-        bool const main \
-    ) \
-    { \
-        switch( uid ) \
+        switch( arg.uid ) \
         { default: __VA_ARGS__ } \
     }
 
@@ -151,24 +123,23 @@
  */
 # define CARALLEL_UID____( NAME, UID ) \
     case UID: \
-        if( true == main ) \
+        if( NULL != q ) \
         { \
             static pthread_t id; \
-            static carallel_ ## NAME ## _arg_t p; \
-            p.uid = UID; p.q = q; \
+            static carallel_ ## NAME ## _arg_t p = { UID }; \
             if( ! pthread_create( &id, NULL, carallel_thread_ ## NAME, &p )) \
             { carallel_queue_put( q, &id ); } \
         } \
-        else if(( false == main ) && ( UID != uid )) { break; } \
+        else if(( NULL == q ) && ( UID != arg.uid )) { break; } \
         else \
             if( true ) { \
-                goto CARALLEL_LABEL( carallel_ ## NAME ## _user_, UID ); \
+                goto CARALLEL_JOIN( carallel_ ## NAME ## _user_, UID ); \
             } \
             else \
                 while( true ) \
                     if( true ) { return; } \
                     else \
-                        CARALLEL_LABEL( carallel_ ## NAME ## _user_, UID ):
+                        CARALLEL_JOIN( carallel_ ## NAME ## _user_, UID ):
                         /* user code block here */
 
 /**

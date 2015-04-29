@@ -29,9 +29,7 @@ typedef struct carallel_queue_item carallel_queue_item_t;
  * Describes a queue. Holds pointer to head of the queue
  * (first item).
  */
-typedef struct {
-    carallel_queue_item_t * head;
-} carallel_queue_t;
+typedef struct { carallel_queue_item_t * head; } carallel_queue_t;
 
 /**
  * \struct carallel_queue_item
@@ -40,8 +38,8 @@ typedef struct {
  */
 struct carallel_queue_item
 {
-    void * value; /* pointer to arbitrary memory location */
-    carallel_queue_item_t * next; /* pointer to next queue item */
+    /** pointer to arbitrary memory location */ void * value;
+    /** pointer to next queue item */ carallel_queue_item_t * next;
 };
 
 /**
@@ -59,10 +57,7 @@ void * carallel_queue_get( carallel_queue_t * const queue );
  * \return Returns 0 on success, ENOMEM if item allocation fails.
  * \remarks Allocates memory for new item put on the queue.
  */
-int carallel_queue_put(
-    carallel_queue_t * const queue,
-    void * const value
-);
+int carallel_queue_put( carallel_queue_t * const queue, void * const value );
 
 #endif /* CARALLEL_QUEUE_H__ */
 

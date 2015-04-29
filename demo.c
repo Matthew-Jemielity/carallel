@@ -23,5 +23,12 @@ CARALLELIZE( foo,
     puts( "thread main" );
 )
 
-int main() { foo(); return 0; }
+CARALLELIZE( bar,
+    CARALLEL( bar ) puts( "bar 1" );
+    CARALLEL( bar ) puts( "bar 2" );
+    CARALLEL( bar ) puts( "bar 3" );
+    CARALLEL( bar ) puts( "bar 4" );
+)
+
+int main() { foo(); bar(); return 0; }
 
