@@ -1,6 +1,3 @@
-#ifndef CARALLEL_H__
-# define CARALLEL_H__
-
 /**
  * \file carallel.h
  * \author Matthew Jemielity matthew.jemielity@gmail.com
@@ -15,7 +12,11 @@
  * Last, but not least, have fun with this project.
  */
 
+#ifndef CARALLEL_H__
+# define CARALLEL_H__
+
 # include <carallel/queue.h>
+
 # include <pthread.h>
 # include <stdbool.h>
 # include <stddef.h>
@@ -28,14 +29,14 @@
  * \param X First token.
  * \param Y Second token.
  */
-#define CARALLEL_JOIN____( X, Y ) X ## Y
+#define CARALLEL_JOIN____(X, Y) X ## Y
 /**
  * \def CARALLEL_JOIN
  * \brief Creates label usable with goto by pasting two tokens together.
  * \param X First token.
  * \param Y Second token.
  */
-#define CARALLEL_JOIN( X, Y ) CARALLEL_JOIN____( X, Y )
+#define CARALLEL_JOIN(X, Y) CARALLEL_JOIN____(X, Y)
 
 /**
  * \def CARALLELIZE
@@ -49,7 +50,7 @@
  * 1. create method: void <name>( void );
  * 2. create thread method that can be passed to pthread_create;
  * 3. create data structure holding UID for code block and a
- *    pointer to queue containing IDs of created threads.
+ *  pointer to queue containing IDs of created threads.
  * The actual function, which the user will define when calling
  * this macro has several additional arguments:
  * a) arg - unique identifier for parallelized code block
@@ -65,38 +66,33 @@
  * in switch statements are basically hidden gotos. Other factor
  * is that this version only supports methods taking no arguments
  * and returning nothing. Though with sufficient macro magic
- * adding more features should be possible.
+ * adding more features should be possible. Currently I'm looking
+ * for a way to remove the __VA_ARGS__ and allow user to define
+ * a block of code after the expanded CARALLELIZE macro.
  */
-# define CARALLELIZE( NAME, ... ) \
-    typedef struct { int64_t uid; } carallel_ ## NAME ## _arg_t; \
-    static void carallelized_ ## NAME( \
-        carallel_ ## NAME ## _arg_t const arg, \
-        carallel_queue_t * const q \
-    ); \
-    void NAME( void ) \
-    { \
-        carallel_queue_t q = { NULL }; \
-        carallelized_ ## NAME(( carallel_ ## NAME ## _arg_t ) { -1 }, &q ); \
-        while( NULL != q.head ) \
-        { \
-            pthread_t * id = carallel_queue_get( &q ); \
-            pthread_join( *id, NULL ); \
-        } \
+# define CARALLELIZE(NAME, ...) \
+  typedef struct { int64_t uid; } carallel_ ## NAME ## _arg; \
+  static void carallelized_ ## NAME( \
+    carallel_ ## NAME ## _arg const arg, \
+    carallel_queue* const q \
+  ); \
+  void NAME(void) { \
+    carallel_queue q = { NULL }; \
+    carallelized_ ## NAME((carallel_ ## NAME ## _arg) { .uid = -1 }, &q); \
+    while (NULL != q.head) { \
+      pthread_t* id = carallel_queue_get(&q); \
+      pthread_join(*id, NULL); \
     } \
-    static void * carallel_thread_ ## NAME( void * const p ) \
-    { \
-        carallel_ ## NAME ## _arg_t * const a = p; \
-        carallelized_ ## NAME( *a, NULL ); \
-        return NULL; \
-    } \
-    static void carallelized_ ## NAME( \
-        carallel_ ## NAME ## _arg_t const arg, \
-        carallel_queue_t * const q \
-    ) \
-    { \
-        switch( arg.uid ) \
-        { default: __VA_ARGS__ } \
-    }
+  } \
+  static void* carallel_thread_ ## NAME(void* const p) { \
+    carallel_ ## NAME ## _arg* const a = p; \
+    carallelized_ ## NAME(*a, NULL); \
+    return NULL; \
+  } \
+  static void carallelized_ ## NAME( \
+    carallel_ ## NAME ## _arg const arg, \
+    carallel_queue * const q \
+  ) { switch (arg.uid) { default: __VA_ARGS__ } }
 
 /**
  * \def CARALLEL_UID____
@@ -121,26 +117,19 @@
  * macro wizardry some obstacles may be removed and functionality
  * extended.
  */
-# define CARALLEL_UID____( NAME, UID ) \
-    case UID: \
-        if( NULL != q ) \
-        { \
-            static pthread_t id; \
-            static carallel_ ## NAME ## _arg_t p = { UID }; \
-            if( ! pthread_create( &id, NULL, carallel_thread_ ## NAME, &p )) \
-            { carallel_queue_put( q, &id ); } \
-        } \
-        else if(( NULL == q ) && ( UID != arg.uid )) { break; } \
-        else \
-            if( true ) { \
-                goto CARALLEL_JOIN( carallel_ ## NAME ## _user_, UID ); \
-            } \
-            else \
-                while( true ) \
-                    if( true ) { return; } \
-                    else \
-                        CARALLEL_JOIN( carallel_ ## NAME ## _user_, UID ):
-                        /* user code block here */
+# define CARALLEL_UID____(NAME, UID) \
+  case UID: \
+    if (NULL != q) { \
+      static pthread_t id; \
+      static carallel_ ## NAME ## _arg p = { .uid = UID }; \
+      int const t = pthread_create(&id, NULL, carallel_thread_ ## NAME, &p); \
+      if (0 == t) { carallel_queue_put( q, &id ); } \
+    } else if ((NULL == q) && (UID != arg.uid)) { break; } else \
+      if (true) { \
+        goto CARALLEL_JOIN( carallel_ ## NAME ## _user_, UID ); \
+      } else while( true ) if( true ) { return; } else \
+        CARALLEL_JOIN( carallel_ ## NAME ## _user_, UID ):
+        /* user code block here */
 
 /**
  * \def CARALLEL
@@ -155,8 +144,7 @@
  * inside a single compilation unit.
  * This macro MUST be followed by a valid code block or a signle statement.
  */
-# define CARALLEL( NAME ) \
-    CARALLEL_UID____( NAME, __COUNTER__ )
+# define CARALLEL(NAME) CARALLEL_UID____(NAME, __COUNTER__)
 /* user code block here */
 
 #endif /* CARALLEL_H__ */
