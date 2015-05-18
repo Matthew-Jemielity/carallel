@@ -91,7 +91,7 @@
   } \
   static void carallelized_ ## NAME( \
     carallel_ ## NAME ## _arg const arg, \
-    carallel_queue * const q \
+    carallel_queue* const q \
   ) { switch (arg.uid) { default: __VA_ARGS__ } }
 
 /**
